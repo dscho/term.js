@@ -110,7 +110,13 @@ server.listen(8022);
  */
 
 io = io.listen(server, {
-  log: false
+  log: false,
+  transports: [
+    'xhr-polling',
+    'jsonp-polling',
+    'htmlfile'
+  ],
+  'polling duration': 5
 });
 
 io.sockets.on('connection', function(sock) {
