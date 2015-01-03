@@ -9,7 +9,8 @@ var http = require('http')
   , express = require('express')
   , io = require('socket.io')
   , pty = require('pty.js')
-  , terminal = require('../');
+  , terminal = require('../')
+  , crypto = require('crypto');
 
 /**
  * term.js
@@ -79,7 +80,8 @@ app.use(function(req, res, next) {
 
 var pass2 = process.env['PASS'];
 app.use(express.basicAuth(function(user, pass, next) {
-  if (user !== process.env['USER'] || pass !== pass2) {
+  if (user !== process.env['USER'] ||
+      crypto.createHash('sha1').update(pass).digest('hex') !== pass2) {
     return next(true);
   }
   return next(null, user);
