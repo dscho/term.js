@@ -103,7 +103,7 @@ if (!~process.argv.indexOf('-n')) {
   });
 }
 
-server.listen(8080);
+server.listen(8022);
 
 /**
  * Sockets
