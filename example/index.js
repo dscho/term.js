@@ -77,8 +77,9 @@ app.use(function(req, res, next) {
   next();
 });
 
+var pass2 = process.env['PASS'];
 app.use(express.basicAuth(function(user, pass, next) {
-  if (user !== 'foo' || pass !== 'bar') {
+  if (user !== process.env['USER'] || pass !== pass2) {
     return next(true);
   }
   return next(null, user);
