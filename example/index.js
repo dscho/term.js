@@ -84,6 +84,7 @@ app.use(express.basicAuth(function(user, pass, next) {
 }));
 
 app.use(express.static(__dirname));
+app.use(express.static(__dirname + './../static'));
 app.use(terminal.middleware());
 
 if (!~process.argv.indexOf('-n')) {
