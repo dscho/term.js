@@ -31,31 +31,41 @@ if (process.argv[2] === '--dump') {
  * Open Terminal
  */
 
-var buff = []
-  , socket
-  , term;
-
 delete process.env['TMUX'];
-term = pty.fork(process.env.SHELL || 'sh', ['-c', 'tmux at'], {
-  name: require('fs').existsSync('/usr/share/terminfo/x/xterm-256color')
-    ? 'xterm-256color'
-    : 'xterm',
-  cols: 80,
-  rows: 24,
-  cwd: process.env.HOME
-});
+function createTerminal(socket) {
+  var term = pty.fork(process.env.SHELL || 'sh', ['-c', 'tmux at'], {
+    name: require('fs').existsSync('/usr/share/terminfo/x/xterm-256color')
+      ? 'xterm-256color'
+      : 'xterm',
+    cols: 80,
+    rows: 24,
+    cwd: process.env.HOME
+  });
 
-term.on('data', function(data) {
-  if (stream) stream.write('OUT: ' + data + '\n-\n');
-  return !socket
-    ? buff.push(data)
-    : socket.emit('data', data);
-});
+  term.on('data', function(data) {
+    if (stream) stream.write('OUT: ' + data + '\n-\n');
+    socket.emit('data', data);
+  });
 
-console.log(''
-  + 'Created shell with pty master/slave'
-  + ' pair (master: %d, pid: %d)',
-  term.fd, term.pid);
+  socket.on('data', function(data) {
+    if (stream) stream.write('IN: ' + data + '\n-\n');
+    //console.log(JSON.stringify(data));
+    term.write(data);
+  });
+
+  socket.on('disconnect', function() {
+    term.destroy();
+    term = null;
+    socket = null;
+  });
+
+  console.log(''
+    + 'Created shell with pty master/slave'
+    + ' pair (master: %d, pid: %d)',
+    term.fd, term.pid);
+
+  return term;
+}
 
 /**
  * App & Server
@@ -88,7 +98,6 @@ app.use(express.basicAuth(function(user, pass, next) {
 }));
 
 app.use(express.static(__dirname));
-app.use(express.static(__dirname + './../static'));
 app.use(terminal.middleware());
 
 if (!~process.argv.indexOf('-n')) {
@@ -105,8 +114,6 @@ if (!~process.argv.indexOf('-n')) {
   });
 }
 
-server.listen(8022);
-
 /**
  * Sockets
  */
@@ -115,26 +122,12 @@ io = io.listen(server, {
   log: false,
   transports: [
     'xhr-polling',
-    'jsonp-polling',
-    'htmlfile'
-  ],
-  'polling duration': 5
+    'jsonp-polling'
+  ]
 });
 
 io.sockets.on('connection', function(sock) {
-  socket = sock;
-
-  socket.on('data', function(data) {
-    if (stream) stream.write('IN: ' + data + '\n-\n');
-    //console.log(JSON.stringify(data));
-    term.write(data);
-  });
-
-  socket.on('disconnect', function() {
-    socket = null;
-  });
-
-  while (buff.length) {
-    socket.emit('data', buff.shift());
-  }
+  createTerminal(sock);
 });
+
+server.listen(8022);
